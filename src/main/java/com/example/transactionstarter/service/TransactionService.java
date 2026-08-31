@@ -5,4 +5,5 @@ import com.example.transactionstarter.dto.TransactionResponse;
 
 public interface TransactionService {
     TransactionResponse createTransaction(CreateTransactionRequest request);
+    TransactionResponse getTransactionById(String transactionId);
 }

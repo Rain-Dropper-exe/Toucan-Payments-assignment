@@ -5,6 +5,7 @@ import com.example.transactionstarter.dto.TransactionResponse;
 import com.example.transactionstarter.enums.TransactionStatus;
 import com.example.transactionstarter.exception.DuplicateTransactionException;
 import com.example.transactionstarter.exception.InvalidTransactionException;
+import com.example.transactionstarter.exception.TransactionNotFoundException;
 import com.example.transactionstarter.model.Transaction;
 import com.example.transactionstarter.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
@@ -48,5 +49,12 @@ public class TransactionServiceImpl implements TransactionService {
 
         // 5. Convert saved Entity back into a TransactionResponse DTO and return
         return new TransactionResponse(savedTransaction);
+    }
+
+    @Override
+    public TransactionResponse getTransactionById(String transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found with ID: " + transactionId));
+        return new TransactionResponse(transaction);
     }
 }

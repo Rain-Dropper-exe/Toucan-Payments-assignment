@@ -19,14 +19,21 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 
-    // 2. Handle Custom Business Rule Failures -> Return 400 Bad Request
+    // 2. Handle Transaction Not Found Exception -> Return 404 Not Found
+    @ExceptionHandler(TransactionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTransactionNotFound(TransactionNotFoundException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("Not Found", ex.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    // 3. Handle Custom Business Rule Failures -> Return 400 Bad Request
     @ExceptionHandler(InvalidTransactionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidTransaction(InvalidTransactionException ex) {
         ErrorResponse errorResponse = new ErrorResponse("Bad Request", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 3. Handle @Valid Structural Validation Failures -> Return 400 Bad Request
+    // 4. Handle @Valid Structural Validation Failures -> Return 400 Bad Request
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         String details = ex.getBindingResult().getFieldErrors().stream()
@@ -37,7 +44,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 4. Fallback Handler for Unexpected Exceptions -> Return 500 Internal Server Error
+    // 5. Fallback Handler for Unexpected Exceptions -> Return 500 Internal Server Error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllOtherExceptions(Exception ex) {
         ErrorResponse errorResponse = new ErrorResponse("Internal Server Error", "An unexpected error occurred: " + ex.getMessage());

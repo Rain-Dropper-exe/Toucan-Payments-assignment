@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -72,9 +73,34 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
     }
 
+    // 2. API 2: Get Transaction by ID Success -> Return 200 OK
+    @Test
+    void testGetTransactionSuccess() throws Exception {
+        CreateTransactionRequest request = new CreateTransactionRequest(
+                "TXN-FETCH-1",
+                "CUST-2002",
+                new BigDecimal("500.00"),
+                Currency.EUR,
+                TransactionType.PAYMENT
+        );
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/transactions/TXN-FETCH-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionId").value("TXN-FETCH-1"))
+                .andExpect(jsonPath("$.customerId").value("CUST-2002"))
+                .andExpect(jsonPath("$.amount").value(500.00))
+                .andExpect(jsonPath("$.currency").value("EUR"))
+                .andExpect(jsonPath("$.type").value("PAYMENT"))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
     // --- Validation, Error Handling, and Business Rule Tests ---
 
-    // 2. Validation Failure: Negative Amount -> Return 400 Bad Request
+    // 3. Validation Failure: Negative Amount -> Return 400 Bad Request
     @Test
     void testCreateTransactionValidationFailure() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -94,7 +120,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Validation Failed"));
     }
 
-    // 3. Business Rule Failure: Duplicate Transaction ID -> Return 409 Conflict
+    // 4. Business Rule Failure: Duplicate Transaction ID -> Return 409 Conflict
     @Test
     void testCreateTransactionDuplicateId() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -119,7 +145,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Conflict"));
     }
 
-    // 4. Business Rule Failure: Amount Scale Exceeds 2 Decimal Places -> Return 400 Bad Request
+    // 5. Business Rule Failure: Amount Scale Exceeds 2 Decimal Places -> Return 400 Bad Request
     @Test
     void testCreateTransactionAmountScaleFailure() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -137,5 +163,14 @@ class TransactionStarterApplicationTests {
                         .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Bad Request"));
+    }
+
+    // 6. Error Handling: Transaction Not Found -> Return 404 Not Found
+    @Test
+    void testGetTransactionNotFound() throws Exception {
+        mockMvc.perform(get("/api/transactions/NON-EXISTENT-TXN"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Transaction not found with ID: NON-EXISTENT-TXN"));
     }
 }
