@@ -1,7 +1,7 @@
 # Student Checklist
 
-- [ ] Run the starter project before changing code.
-- [ ] Run `./mvnw clean test` (or `mvnw.cmd clean test` on Windows).
+- [x] Run the starter project before changing code.
+- [x] Run `./mvnw clean test` (or `mvnw.cmd clean test` on Windows).
 - [ ] Implement create transaction.
 - [ ] Implement get transaction.
 - [ ] Implement status update.
