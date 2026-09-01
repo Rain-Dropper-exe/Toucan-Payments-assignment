@@ -13,6 +13,8 @@ import com.example.transactionstarter.validation.StatusTransitionValidator;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -34,7 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // 2. Business Validation: Reject amount with more than 2 decimal places
         BigDecimal amount = request.getAmount();
-        if (amount.scale() > 2) {
+        if (amount != null && amount.scale() > 2) {
             throw new InvalidTransactionException("Amount cannot have more than 2 decimal places");
         }
 
@@ -77,5 +79,13 @@ public class TransactionServiceImpl implements TransactionService {
 
         // 4. Return updated response DTO
         return new TransactionResponse(updatedTransaction);
+    }
+
+    @Override
+    public List<TransactionResponse> getTransactionsByCustomerId(String customerId) {
+        return transactionRepository.findByCustomerId(customerId)
+                .stream()
+                .map(TransactionResponse::new)
+                .collect(Collectors.toList());
     }
 }

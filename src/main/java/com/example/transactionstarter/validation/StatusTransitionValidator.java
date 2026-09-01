@@ -16,6 +16,10 @@ public class StatusTransitionValidator {
     );
 
     public void validateTransition(TransactionStatus currentStatus, TransactionStatus newStatus) {
+        if (newStatus == null) {
+            throw new InvalidStatusTransitionException("Target status cannot be null");
+        }
+
         if (currentStatus == newStatus) {
             throw new InvalidStatusTransitionException(
                     "Transaction is already in status " + currentStatus + ". Same-status updates are not permitted."

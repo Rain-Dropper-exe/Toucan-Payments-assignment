@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -125,9 +126,32 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
 
+    // 4. API 4: Get Customer Transactions Success -> Return 200 OK with list
+    @Test
+    void testGetCustomerTransactionsSuccess() throws Exception {
+        // Create 2 transactions for CUST-A
+        CreateTransactionRequest reqA1 = new CreateTransactionRequest("TXN-A1", "CUST-A", new BigDecimal("100.00"), Currency.USD, TransactionType.PAYMENT);
+        CreateTransactionRequest reqA2 = new CreateTransactionRequest("TXN-A2", "CUST-A", new BigDecimal("200.00"), Currency.EUR, TransactionType.REFUND);
+        // Create 1 transaction for CUST-B
+        CreateTransactionRequest reqB1 = new CreateTransactionRequest("TXN-B1", "CUST-B", new BigDecimal("300.00"), Currency.GBP, TransactionType.TRANSFER);
+
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reqA1))).andExpect(status().isCreated());
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reqA2))).andExpect(status().isCreated());
+        mockMvc.perform(post("/api/transactions").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(reqB1))).andExpect(status().isCreated());
+
+        // Fetch transactions for CUST-A only
+        mockMvc.perform(get("/api/customers/CUST-A/transactions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].transactionId").value("TXN-A1"))
+                .andExpect(jsonPath("$[0].customerId").value("CUST-A"))
+                .andExpect(jsonPath("$[1].transactionId").value("TXN-A2"))
+                .andExpect(jsonPath("$[1].customerId").value("CUST-A"));
+    }
+
     // --- Validation, Error Handling, and Business Rule Tests ---
 
-    // 4. Validation Failure: Negative Amount -> Return 400 Bad Request
+    // 5. Validation Failure: Negative Amount -> Return 400 Bad Request
     @Test
     void testCreateTransactionValidationFailure() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -147,7 +171,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Validation Failed"));
     }
 
-    // 5. Business Rule Failure: Duplicate Transaction ID -> Return 409 Conflict
+    // 6. Business Rule Failure: Duplicate Transaction ID -> Return 409 Conflict
     @Test
     void testCreateTransactionDuplicateId() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -172,7 +196,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Conflict"));
     }
 
-    // 6. Business Rule Failure: Amount Scale Exceeds 2 Decimal Places -> Return 400 Bad Request
+    // 7. Business Rule Failure: Amount Scale Exceeds 2 Decimal Places -> Return 400 Bad Request
     @Test
     void testCreateTransactionAmountScaleFailure() throws Exception {
         CreateTransactionRequest request = new CreateTransactionRequest(
@@ -192,7 +216,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Bad Request"));
     }
 
-    // 7. Error Handling: Transaction Not Found -> Return 404 Not Found
+    // 8. Error Handling: Transaction Not Found -> Return 404 Not Found
     @Test
     void testGetTransactionNotFound() throws Exception {
         mockMvc.perform(get("/api/transactions/NON-EXISTENT-TXN"))
@@ -201,7 +225,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.message").value("Transaction not found with ID: NON-EXISTENT-TXN"));
     }
 
-    // 8. State Machine Failure: Disallowed Transition From Terminal State -> Return 400 Bad Request
+    // 9. State Machine Failure: Disallowed Transition From Terminal State -> Return 400 Bad Request
     @Test
     void testUpdateTransactionStatusInvalidTransition() throws Exception {
         CreateTransactionRequest createRequest = new CreateTransactionRequest(
@@ -230,7 +254,7 @@ class TransactionStarterApplicationTests {
                 .andExpect(jsonPath("$.error").value("Invalid Status Transition"));
     }
 
-    // 9. State Machine Failure: Same-Status Update Rejected -> Return 400 Bad Request
+    // 10. State Machine Failure: Same-Status Update Rejected -> Return 400 Bad Request
     @Test
     void testUpdateTransactionStatusSameStatusRejected() throws Exception {
         CreateTransactionRequest createRequest = new CreateTransactionRequest(
@@ -251,5 +275,49 @@ class TransactionStarterApplicationTests {
                         .content(objectMapper.writeValueAsString(sameStatusRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invalid Status Transition"));
+    }
+
+    // 11. State Machine Failure: Disallowed Direct Jump (PENDING -> REFUNDED) -> Return 400 Bad Request
+    @Test
+    void testUpdateTransactionStatusPendingToRefundedRejected() throws Exception {
+        CreateTransactionRequest createRequest = new CreateTransactionRequest(
+                "TXN-STATUS-JUMP",
+                "CUST-2002",
+                new BigDecimal("100.00"),
+                Currency.USD,
+                TransactionType.PAYMENT
+        );
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated());
+
+        // Attempt direct jump: PENDING -> REFUNDED (Must be rejected, can only refund from COMPLETED)
+        UpdateStatusRequest refundRequest = new UpdateStatusRequest(TransactionStatus.REFUNDED);
+        mockMvc.perform(patch("/api/transactions/TXN-STATUS-JUMP/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refundRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid Status Transition"));
+    }
+
+    // 12. Error Handling: Update Status on Non-Existent Transaction -> Return 404 Not Found
+    @Test
+    void testUpdateTransactionStatusNotFound() throws Exception {
+        UpdateStatusRequest updateRequest = new UpdateStatusRequest(TransactionStatus.COMPLETED);
+        mockMvc.perform(patch("/api/transactions/NON-EXISTENT-TXN/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Transaction not found with ID: NON-EXISTENT-TXN"));
+    }
+
+    // 13. Customer Lookup: Non-Existent or Customer With No Transactions -> Return 200 OK with empty array []
+    @Test
+    void testGetCustomerTransactionsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/customers/NON-EXISTENT-CUST/transactions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 }
