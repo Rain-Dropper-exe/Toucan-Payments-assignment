@@ -2,12 +2,14 @@ package com.example.transactionstarter.service;
 
 import com.example.transactionstarter.dto.CreateTransactionRequest;
 import com.example.transactionstarter.dto.TransactionResponse;
+import com.example.transactionstarter.dto.UpdateStatusRequest;
 import com.example.transactionstarter.enums.TransactionStatus;
 import com.example.transactionstarter.exception.DuplicateTransactionException;
 import com.example.transactionstarter.exception.InvalidTransactionException;
 import com.example.transactionstarter.exception.TransactionNotFoundException;
 import com.example.transactionstarter.model.Transaction;
 import com.example.transactionstarter.repository.TransactionRepository;
+import com.example.transactionstarter.validation.StatusTransitionValidator;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,9 +18,11 @@ import java.math.BigDecimal;
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
+    private final StatusTransitionValidator statusTransitionValidator;
 
-    public TransactionServiceImpl(TransactionRepository transactionRepository) {
+    public TransactionServiceImpl(TransactionRepository transactionRepository, StatusTransitionValidator statusTransitionValidator) {
         this.transactionRepository = transactionRepository;
+        this.statusTransitionValidator = statusTransitionValidator;
     }
 
     @Override
@@ -56,5 +60,22 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found with ID: " + transactionId));
         return new TransactionResponse(transaction);
+    }
+
+    @Override
+    public TransactionResponse updateTransactionStatus(String transactionId, UpdateStatusRequest request) {
+        // 1. Retrieve transaction by ID
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found with ID: " + transactionId));
+
+        // 2. Validate status transition rules
+        statusTransitionValidator.validateTransition(transaction.getStatus(), request.getStatus());
+
+        // 3. Update status and save
+        transaction.setStatus(request.getStatus());
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+
+        // 4. Return updated response DTO
+        return new TransactionResponse(updatedTransaction);
     }
 }

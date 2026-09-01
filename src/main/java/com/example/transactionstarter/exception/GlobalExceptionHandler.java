@@ -33,7 +33,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 4. Handle @Valid Structural Validation Failures -> Return 400 Bad Request
+    // 4. Handle Invalid Status Transitions -> Return 400 Bad Request
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidStatusTransition(InvalidStatusTransitionException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("Invalid Status Transition", ex.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // 5. Handle @Valid Structural Validation Failures -> Return 400 Bad Request
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         String details = ex.getBindingResult().getFieldErrors().stream()
@@ -44,7 +51,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 5. Fallback Handler for Unexpected Exceptions -> Return 500 Internal Server Error
+    // 6. Fallback Handler for Unexpected Exceptions -> Return 500 Internal Server Error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllOtherExceptions(Exception ex) {
         ErrorResponse errorResponse = new ErrorResponse("Internal Server Error", "An unexpected error occurred: " + ex.getMessage());
