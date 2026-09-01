@@ -213,7 +213,7 @@ class TransactionStarterApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Bad Request"));
+                .andExpect(jsonPath("$.error").value("Validation Failed"));
     }
 
     // 8. Error Handling: Transaction Not Found -> Return 404 Not Found

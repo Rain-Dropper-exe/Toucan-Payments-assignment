@@ -17,6 +17,7 @@ public class CreateTransactionRequest {
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be positive and greater than 0")
     @DecimalMax(value = "1000000.00", message = "Amount cannot exceed 1,000,000")
+    @Digits(integer = 17, fraction = 2, message = "Amount cannot have more than 2 decimal places")
     private BigDecimal amount;
 
     @NotNull(message = "Currency is required")

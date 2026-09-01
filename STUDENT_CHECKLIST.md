@@ -11,4 +11,4 @@
 - [x] Add at least four meaningful tests.
 - [x] Add sensible error handling.
 - [x] Run the complete test suite before submission.
-- [ ] Disclose AI assistance, if used.
+- [x] Disclose AI assistance, if used.

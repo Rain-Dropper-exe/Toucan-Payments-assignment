@@ -1,6 +1,16 @@
 /target/
 !.mvn/wrapper/maven-wrapper.jar
 
+# Compiled class & package files
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+
+# Log files
+*.log
+
 # IDE specific files
 .idea/
 *.iws
@@ -10,6 +20,7 @@
 .project
 .settings
 .vscode/
+.gemini/
 
 # OS specific files
 .DS_Store
